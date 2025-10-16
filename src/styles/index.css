@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root{
+  --bg: #0f172a;
+  --card: #0b1220;
+}
+
+/* small theme helpers */
+.play-badge{position:absolute;left:12px;bottom:12px}

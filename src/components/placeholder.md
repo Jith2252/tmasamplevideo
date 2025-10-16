@@ -1,0 +1,1 @@
+This folder contains React components: Header, CardGrid, Card, WatchPage. Edit them to add real data, routing and APIs.
