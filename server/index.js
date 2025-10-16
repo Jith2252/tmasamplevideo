@@ -139,6 +139,14 @@ const HOST = process.env.HOST || '0.0.0.0'
 
 app.get('/health', (req, res) => res.json({ ok: true, pid: process.pid }))
 
+// lightweight endpoint for clients to verify whether the current session is an admin.
+// Clients should call this with Authorization: Bearer <access_token> to check.
+app.get('/is-admin', ensureAdmin, (req, res) => {
+  try{
+    return res.json({ admin: true, user: req.adminUser || null })
+  }catch(e){ console.error('/is-admin err', e); return res.status(500).json({ error: 'server_error' }) }
+})
+
 app.listen(PORT, HOST, ()=> console.log(`Admin server running on ${HOST}:${PORT} (pid ${process.pid})`))
 
 // Serve frontend production build if present
