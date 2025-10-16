@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useToast } from '../lib/toast'
 import { useNavigate } from 'react-router-dom'
 import { checkIsAdmin } from '../lib/auth'
 
@@ -14,6 +15,8 @@ export default function Upload(){
     checkIsAdmin().then(v=>setIsAdmin(!!v))
   },[])
 
+  const toast = useToast()
+
   if(isAdmin===false) return (
     <div className="max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">Upload video</h1>
@@ -23,7 +26,7 @@ export default function Upload(){
 
   async function submit(e){
     e.preventDefault()
-    if(!file) return alert('Select a file')
+  if(!file) return toast.push('Select a file', { type: 'error' })
     setLoading(true)
     try{
       // upload to storage
@@ -31,7 +34,7 @@ export default function Upload(){
         const uploadRes = await supabase.storage.from('videos').upload(path, file)
         if(uploadRes.error){
           console.error('upload', uploadRes.error)
-          alert('Upload failed: '+uploadRes.error.message)
+          toast.push('Upload failed: '+uploadRes.error.message, { type: 'error' })
           setLoading(false)
           return
         }
@@ -53,18 +56,18 @@ export default function Upload(){
         console.error('db insert', dbErr)
         // rollback storage to avoid orphaned file
         try{ await supabase.storage.from('videos').remove([filePath]) }catch(e){ console.error('rollback remove', e) }
-        alert('Saved to storage but failed to create video record: '+(dbErr.message||dbErr))
+        toast.push('Saved to storage but failed to create video record: '+(dbErr.message||dbErr), { type: 'error' })
         setLoading(false)
         return
       }
 
-      alert('Upload successful')
+      toast.push('Upload successful', { type: 'info' })
       // navigate to the new video's watch page if we got an id
       if(created?.id) navigate(`/watch/${created.id}`)
       else navigate('/')
     }catch(e){
       console.error(e)
-      alert('Upload failed')
+      toast.push('Upload failed', { type: 'error' })
     }finally{ setLoading(false) }
   }
 

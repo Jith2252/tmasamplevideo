@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { useToast } from '../lib/toast'
+import ConfirmModal from './ConfirmModal'
+import SecretModal from './SecretModal'
 
 function fmtDate(iso){
   try{
@@ -41,15 +44,18 @@ export default function WatchPage(){
     return ()=>{ mounted = false }
   },[id])
 
+  const toast = useToast()
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [showSecret, setShowSecret] = useState(false)
   async function post(){
-    if(!user){ alert('Please sign in to post comments'); return }
+    if(!user){ toast.push('Please sign in to post comments', { type: 'error' }); return }
     if(!text.trim()) return
     const insert = { video_id: id, user_email: user.email, content: text.trim() }
     const { error } = await supabase.from('comments').insert([insert])
     if(error){
       console.error('comment insert', error)
-      if(/row-level security/i.test(error.message||'') || error.status===403) alert('Server requires sign-in to post comments')
-      else alert('Failed to post: '+(error.message||error))
+      if(/row-level security/i.test(error.message||'') || error.status===403) toast.push('Server requires sign-in to post comments', { type: 'error' })
+      else toast.push('Failed to post: '+(error.message||error), { type: 'error' })
     } else {
       setText('')
       // refresh comments from server to get created_at and id
@@ -65,7 +71,11 @@ export default function WatchPage(){
   const views = video?.views ?? 0
 
   async function handleDelete(){
-    if(!confirm('Delete this video? This will remove the DB row and storage object.')) return
+    setShowConfirm(true)
+  }
+
+  async function doDelete(){
+    setShowConfirm(false)
     try{
       let path = null
       if(video?.url){
@@ -74,9 +84,12 @@ export default function WatchPage(){
       }
 
       let secret = sessionStorage.getItem('admin_secret')
-      if(!secret) { secret = prompt('Enter admin secret to delete video (stored for this session):') }
-      if(!secret) { alert('Delete cancelled'); return }
-      sessionStorage.setItem('admin_secret', secret)
+      if(!secret){
+        // show secret modal to collect admin secret
+        setShowSecret(true)
+        // wait for user to fill secret modal; it stores to sessionStorage
+        return
+      }
 
       const res = await fetch((window.__ADMIN_SERVER_URL||'http://localhost:5000') + '/delete-video', {
         method: 'POST', headers: { 'content-type': 'application/json', 'x-admin-secret': secret },
@@ -84,9 +97,16 @@ export default function WatchPage(){
       })
       const json = await res.json()
       if(!res.ok) throw new Error(json?.error || res.statusText)
-      alert('Deleted')
+      toast.push('Deleted', { type: 'info' })
       window.location.href = '/'
     }catch(err){ console.error('delete', err); alert('Delete failed: '+(err.message||err)) }
+  }
+
+  // called after SecretModal saves to sessionStorage
+  async function afterSecretSaved(){
+    setShowSecret(false)
+    // retry delete flow
+    await doDelete()
   }
 
   return (

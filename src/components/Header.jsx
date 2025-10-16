@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useNavigate } from 'react-router-dom'
 import { checkIsAdmin } from '../lib/auth'
+import AuthModal from './AuthModal'
 
 export default function Header(){
   const [user, setUser] = useState(null)
@@ -19,13 +20,11 @@ export default function Header(){
 
   const [isAdmin, setIsAdmin] = React.useState(false)
 
-  async function signIn(){
-    // Redirect to provider (github) or show modal — keep simple: magic link prompt
-    const email = prompt('Enter email to sign in (magic link)')
-    if(!email) return
-    await supabase.auth.signInWithOtp({ email })
-    alert('Magic link sent to '+email)
-  }
+  const [showAuth, setShowAuth] = useState(false)
+  function openAuth(){ setShowAuth(true) }
+  function closeAuth(){ setShowAuth(false) }
+
+  function onAuthSuccess(u){ setUser(u || null); checkIsAdmin().then(v=>setIsAdmin(!!v)) }
   async function signOut(){ await supabase.auth.signOut(); setUser(null) }
 
   return (
@@ -49,7 +48,10 @@ export default function Header(){
               <button onClick={signOut} className="px-3 py-1 border rounded">Sign out</button>
             </div>
           ) : (
-            <button onClick={signIn} className="px-3 py-1 border rounded">Sign in</button>
+            <>
+              <button onClick={openAuth} className="px-3 py-1 border rounded">Sign in</button>
+              {showAuth && <AuthModal onClose={closeAuth} onSuccess={onAuthSuccess} />}
+            </>
           )}
         </div>
       </div>

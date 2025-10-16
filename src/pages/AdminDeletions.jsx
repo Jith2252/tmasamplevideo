@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useToast } from '../lib/toast'
 
 export default function AdminDeletions(){
   const [rows, setRows] = useState([])
@@ -8,12 +9,12 @@ export default function AdminDeletions(){
     async function load(){
       try{
         const secret = sessionStorage.getItem('admin_secret')
-        if(!secret){ const s = prompt('Enter admin secret to view deletions'); if(!s) return }
-        const res = await fetch((window.__ADMIN_SERVER_URL||'http://localhost:5000') + '/deletions', { headers: { 'x-admin-secret': sessionStorage.getItem('admin_secret') || secret }})
+        if(!secret){ toast.push('Admin secret missing. Set admin_secret in sessionStorage to view deletions', { type: 'error' }); return }
+        const res = await fetch((window.__ADMIN_SERVER_URL||'http://localhost:5000') + '/deletions', { headers: { 'x-admin-secret': secret }})
         if(!res.ok){ const j = await res.json(); throw new Error(j?.error||res.statusText) }
         const j = await res.json()
         setRows(j.data||[])
-      }catch(e){ alert('Failed to load deletions: '+(e.message||e)) }
+      }catch(e){ toast.push('Failed to load deletions: '+(e.message||e), { type: 'error' }) }
       finally{ setLoading(false) }
     }
     load()
