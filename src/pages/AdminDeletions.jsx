@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useToast } from '../lib/toast'
+import { useToast } from '../lib/toast.jsx'
 
 export default function AdminDeletions(){
   const [rows, setRows] = useState([])

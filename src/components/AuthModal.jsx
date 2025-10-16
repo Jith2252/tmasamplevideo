@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { useToast } from '../lib/toast'
+import { useToast } from '../lib/toast.jsx'
 
 export default function AuthModal({ onClose, onSuccess }){
   const [mode, setMode] = useState('signin') // or 'signup'

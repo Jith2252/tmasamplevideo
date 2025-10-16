@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { checkIsAdmin } from '../lib/auth'
-import { useToast } from '../lib/toast'
+import { useToast } from '../lib/toast.jsx'
 import ConfirmModal from './ConfirmModal'
 import SecretModal from './SecretModal'
 
