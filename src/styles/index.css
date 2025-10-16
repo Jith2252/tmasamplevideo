@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* small modal animation */
+@keyframes modal-in { from { transform: translateY(-6px) scale(.98); opacity: 0 } to { transform: translateY(0) scale(1); opacity: 1 } }
+.animate-modal-in { animation: modal-in 160ms ease-out forwards }
+
 :root{
   --bg: #0f172a;
   --card: #0b1220;

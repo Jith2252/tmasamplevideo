@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
-import { useToast } from '../lib/toast.jsx'
+ import { useToast } from '../lib/toast.jsx'
 import ConfirmModal from './ConfirmModal'
 import SecretModal from './SecretModal'
 

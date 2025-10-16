@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useToast } from '../lib/toast.jsx'
 
@@ -9,6 +9,18 @@ export default function AuthModal({ onClose, onSuccess }){
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const toast = useToast()
+  const emailRef = useRef(null)
+
+  useEffect(()=>{
+    // lock body scroll while modal open
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    // focus email
+    setTimeout(()=> emailRef.current?.focus(), 50)
+    function onKey(e){ if(e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return ()=>{ window.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+  },[])
 
   function validEmail(e){
     return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)
@@ -54,12 +66,15 @@ export default function AuthModal({ onClose, onSuccess }){
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose} aria-modal="true" role="dialog">
+  <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md transform transition-all duration-150 scale-95 opacity-0 animate-modal-in" onClick={e=>e.stopPropagation()}>
+        <div className="flex justify-end">
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700" aria-label="Close">✕</button>
+        </div>
         <h3 className="text-lg font-semibold mb-2">{mode === 'signin' ? 'Sign in' : 'Create account'}</h3>
         {error && <div className="mb-3 text-sm text-red-600">{error}</div>}
         <form onSubmit={submit} className="space-y-3">
-          <input className="w-full px-3 py-2 border rounded" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />
+          <input ref={emailRef} className="w-full px-3 py-2 border rounded" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />
           <input type="password" className="w-full px-3 py-2 border rounded" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} />
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-500">{mode === 'signin' ? 'Need an account?' : 'Have an account?'}</div>

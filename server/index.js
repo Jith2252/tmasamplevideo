@@ -20,11 +20,32 @@ if(!SUPABASE_URL || !SUPABASE_SERVICE_ROLE) {
 
 const supabase = createClient(SUPABASE_URL || '', SUPABASE_SERVICE_ROLE || '')
 
-// Simple admin auth: header 'x-admin-secret' must match ADMIN_SECRET
-function ensureAdmin(req,res,next){
-  const key = req.headers['x-admin-secret']
-  if(!ADMIN_SECRET || key !== ADMIN_SECRET) return res.status(401).json({ error: 'unauthorized' })
-  next()
+// Admin emails list (comma separated) - fallback to VITE_ADMIN_EMAILS if set
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS || '').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean)
+
+// Ensure admin by verifying the Authorization Bearer token belongs to an admin email.
+async function ensureAdmin(req,res,next){
+  try{
+    // First, allow server-to-server ADMIN_SECRET for backwards compatibility
+    const headerSecret = req.headers['x-admin-secret']
+    if(ADMIN_SECRET && headerSecret && headerSecret === ADMIN_SECRET) return next()
+
+    const auth = req.headers['authorization'] || ''
+    if(!auth.startsWith('Bearer ')) return res.status(401).json({ error: 'missing_token' })
+    const token = auth.split(' ')[1]
+    if(!token) return res.status(401).json({ error: 'missing_token' })
+
+    // Use the service-role client to fetch user by access token
+    const { data: userData, error: userErr } = await supabase.auth.getUser(token)
+    if(userErr || !userData?.user) return res.status(401).json({ error: 'invalid_token' })
+    const user = userData.user
+    const email = (user.email||'').toLowerCase()
+    if(!ADMIN_EMAILS.includes(email)) return res.status(403).json({ error: 'forbidden' })
+
+    // attach user info to request for audit logging
+    req.adminUser = { id: user.id, email }
+    next()
+  }catch(e){ console.error('ensureAdmin err', e); return res.status(500).json({ error: 'server_error' }) }
 }
 
 app.post('/delete-video', ensureAdmin, async (req,res)=>{
@@ -45,7 +66,7 @@ app.post('/delete-video', ensureAdmin, async (req,res)=>{
 
     // write audit row to deletions table (best-effort)
     try{
-      const adminIdent = req.headers['x-admin-secret'] || 'unknown'
+      const adminIdent = (req.adminUser && req.adminUser.email) || (req.headers['x-admin-secret'] ? 'shared-secret' : 'unknown')
       await supabase.from('deletions').insert([{
         video_id: id || null,
         storage_path: storage_path || null,
