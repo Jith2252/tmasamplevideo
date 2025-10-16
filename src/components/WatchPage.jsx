@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useToast } from '../lib/toast.jsx'
+import { checkIsAdmin, onAuthStateChange } from '../lib/auth'
 import ConfirmModal from './ConfirmModal'
 
 function fmtDate(iso){
@@ -21,7 +22,11 @@ export default function WatchPage(){
 
   useEffect(()=>{
     let mounted = true
-    supabase.auth.getUser().then(r=>{ if(mounted) setUser(r.data.user||null) })
+  supabase.auth.getUser().then(r=>{ if(mounted) setUser(r.data.user||null) })
+  // update admin status live
+  let mounted2 = true
+  checkIsAdmin().then(v=>{ if(mounted2) setUser(prev=>prev) })
+  const unsub = onAuthStateChange(()=>{ /* no-op: ensures other components re-evaluate checkIsAdmin via shared subscriber */ })
 
     const load = async ()=>{
       try{
@@ -41,6 +46,8 @@ export default function WatchPage(){
     }
     load()
     return ()=>{ mounted = false }
+    // cleanup auth sub
+    return ()=>{ mounted = false; unsub && unsub() }
   },[id])
 
   const toast = useToast()

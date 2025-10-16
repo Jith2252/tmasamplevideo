@@ -7,6 +7,11 @@ const { createClient } = require('@supabase/supabase-js')
 const app = express()
 app.use(cors())
 app.use(express.json())
+// Log incoming requests for diagnostics
+app.use((req, res, next) => {
+  try{ console.log(`[req] ${req.method} ${req.url} from ${req.ip}`) }catch(e){}
+  next()
+})
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE
@@ -50,17 +55,50 @@ async function ensureAdmin(req,res,next){
 
 app.post('/delete-video', ensureAdmin, async (req,res)=>{
   try{
-    const { id, storage_path } = req.body
+    let { id, storage_path } = req.body || {}
     let success = true
     let errMsg = null
     try{
-      if(storage_path){
-        const { error: rmErr } = await supabase.storage.from('videos').remove([storage_path])
-        if(rmErr){ console.error('storage remove err', rmErr); success = false; errMsg = rmErr.message }
+      // If storage_path not provided but we have an id, try to resolve the video's URL from DB
+      if(!storage_path && id){
+        try{
+          const { data: vdata, error: verr } = await supabase.from('videos').select('url').eq('id', id).single()
+          if(!verr && vdata && vdata.url){
+            const m = vdata.url.match(/\/public\/videos\/(.+)$/)
+            if(m) storage_path = decodeURIComponent(m[1])
+          }
+        }catch(e){ console.error('resolve storage path failed', e) }
       }
-      if(id){
-        const { error: dbErr } = await supabase.from('videos').delete().eq('id', id)
-        if(dbErr){ console.error('db delete err', dbErr); success = false; errMsg = dbErr.message }
+
+      // Soft-delete by default: mark the DB row as deleted instead of removing it immediately.
+      // To permanently remove storage and DB row, set PERMANENT_DELETE=true in env.
+      const PERMANENT = (process.env.PERMANENT_DELETE || 'false').toLowerCase() === 'true'
+
+      if(PERMANENT){
+        // permanently remove storage (if any)
+        if(storage_path){
+          const { error: rmErr } = await supabase.storage.from('videos').remove([storage_path])
+          if(rmErr){ console.error('storage remove err', rmErr); success = false; errMsg = rmErr.message }
+        }
+        // permanently delete DB row
+        if(id){
+          const { error: dbErr } = await supabase.from('videos').delete().eq('id', id)
+          if(dbErr){ console.error('db delete err', dbErr); success = false; errMsg = dbErr.message }
+        }
+      } else {
+        // soft-delete: update the row with deleted flags and who deleted it
+        if(id){
+          const upd = {
+            deleted: true,
+            deleted_at: new Date().toISOString(),
+            deleted_by: (req.adminUser && req.adminUser.email) || null
+          }
+          const { error: upErr } = await supabase.from('videos').update(upd).eq('id', id)
+          if(upErr){ console.error('db soft-delete err', upErr); success = false; errMsg = upErr.message }
+        } else {
+          // no id provided; if only storage_path present we won't remove it during soft-delete
+          console.warn('soft-delete requested but no id provided; skipping DB update')
+        }
       }
     }catch(inner){ success = false; errMsg = inner.message || String(inner); console.error('delete inner err', inner) }
 
@@ -97,7 +135,11 @@ app.get('/deletions', ensureAdmin, async (req,res)=>{
 })
 
 const PORT = process.env.PORT || 5000
-app.listen(PORT, ()=> console.log('Admin server running on', PORT))
+const HOST = process.env.HOST || '0.0.0.0'
+
+app.get('/health', (req, res) => res.json({ ok: true, pid: process.pid }))
+
+app.listen(PORT, HOST, ()=> console.log(`Admin server running on ${HOST}:${PORT} (pid ${process.pid})`))
 
 // Serve frontend production build if present
 const distPath = path.join(__dirname, '..', 'dist')

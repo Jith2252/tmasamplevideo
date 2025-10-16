@@ -70,9 +70,9 @@ export default function AuthModal({ onClose, onSuccess }){
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50" onClick={onClose} aria-modal="true" role="dialog">
-  <div className="absolute left-1/2 top-6 sm:top-1/2 -translate-x-1/2 sm:-translate-y-1/2 transform w-full max-w-md px-4">
-  <div ref={modalRef} className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full transform transition-all duration-150 scale-95 opacity-0 animate-modal-in max-h-[80vh] overflow-auto" onClick={e=>e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/40 z-50 flex min-h-screen items-start sm:items-center justify-center px-4 py-6 sm:py-0" onClick={onClose} aria-modal="true" role="dialog">
+      <div className="w-full max-w-md">
+        <div ref={modalRef} className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full transform transition-all duration-150 scale-95 opacity-0 animate-modal-in max-h-[80vh] overflow-auto" onClick={e=>e.stopPropagation()}>
         <div className="flex justify-end">
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700" aria-label="Close">✕</button>
         </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
-import { checkIsAdmin } from '../lib/auth'
+import { checkIsAdmin, onAuthStateChange } from '../lib/auth'
 import { useToast } from '../lib/toast.jsx'
 import ConfirmModal from './ConfirmModal'
 
@@ -18,7 +18,12 @@ function isVideoUrl(url){
 export default function Card({id,title,thumb,views}){
   const [copied, setCopied] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
-  useEffect(()=>{ checkIsAdmin().then(v=>setIsAdmin(!!v)) },[])
+  useEffect(()=>{ 
+    let mounted = true
+    checkIsAdmin().then(v=>{ if(mounted) setIsAdmin(!!v) })
+    const unsub = onAuthStateChange(()=>{ checkIsAdmin().then(v=>setIsAdmin(!!v)) })
+    return ()=>{ mounted = false; unsub && unsub() }
+  },[])
   const toast = useToast()
   const [showConfirm, setShowConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
