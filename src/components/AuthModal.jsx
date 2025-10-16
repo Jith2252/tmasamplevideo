@@ -10,13 +10,17 @@ export default function AuthModal({ onClose, onSuccess }){
   const [error, setError] = useState('')
   const toast = useToast()
   const emailRef = useRef(null)
+  const modalRef = useRef(null)
 
   useEffect(()=>{
     // lock body scroll while modal open
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    // focus email
-    setTimeout(()=> emailRef.current?.focus(), 50)
+    // reset modal scroll and focus email so the top of the form is visible
+    setTimeout(()=>{
+      try{ modalRef.current?.scrollTo?.({ top: 0 }) }catch(e){}
+      emailRef.current?.focus()
+    }, 50)
     function onKey(e){ if(e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
     return ()=>{ window.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
@@ -66,16 +70,23 @@ export default function AuthModal({ onClose, onSuccess }){
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose} aria-modal="true" role="dialog">
-  <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md transform transition-all duration-150 scale-95 opacity-0 animate-modal-in" onClick={e=>e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/40 z-50" onClick={onClose} aria-modal="true" role="dialog">
+  <div className="absolute left-1/2 top-6 sm:top-1/2 -translate-x-1/2 sm:-translate-y-1/2 transform w-full max-w-md px-4">
+  <div ref={modalRef} className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full transform transition-all duration-150 scale-95 opacity-0 animate-modal-in max-h-[80vh] overflow-auto" onClick={e=>e.stopPropagation()}>
         <div className="flex justify-end">
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700" aria-label="Close">✕</button>
         </div>
         <h3 className="text-lg font-semibold mb-2">{mode === 'signin' ? 'Sign in' : 'Create account'}</h3>
         {error && <div className="mb-3 text-sm text-red-600">{error}</div>}
         <form onSubmit={submit} className="space-y-3">
-          <input ref={emailRef} className="w-full px-3 py-2 border rounded" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />
-          <input type="password" className="w-full px-3 py-2 border rounded" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} />
+          <div>
+            <label htmlFor="auth-email" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Email</label>
+            <input id="auth-email" ref={emailRef} className="w-full mt-1 px-3 py-2 border rounded text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700" placeholder="you@example.com" value={email} onChange={e=>setEmail(e.target.value)} aria-label="Email" />
+          </div>
+          <div>
+            <label htmlFor="auth-password" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Password</label>
+            <input id="auth-password" type="password" className="w-full mt-1 px-3 py-2 border rounded text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} aria-label="Password" />
+          </div>
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-500">{mode === 'signin' ? 'Need an account?' : 'Have an account?'}</div>
             <div className="flex items-center gap-3">
@@ -88,6 +99,7 @@ export default function AuthModal({ onClose, onSuccess }){
             <button type="button" onClick={onClose} className="px-3 py-2 border rounded">Cancel</button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   )

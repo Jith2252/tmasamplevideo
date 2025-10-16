@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabaseClient'
 import { checkIsAdmin } from '../lib/auth'
 import { useToast } from '../lib/toast.jsx'
 import ConfirmModal from './ConfirmModal'
-import SecretModal from './SecretModal'
 
 function isImageUrl(url){
   if(!url) return false
@@ -22,7 +21,6 @@ export default function Card({id,title,thumb,views}){
   useEffect(()=>{ checkIsAdmin().then(v=>setIsAdmin(!!v)) },[])
   const toast = useToast()
   const [showConfirm, setShowConfirm] = useState(false)
-  const [showSecret, setShowSecret] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const source = thumb || ''
   const fallbackImg = `https://picsum.photos/seed/video${id}/640/360`
@@ -73,15 +71,17 @@ export default function Card({id,title,thumb,views}){
                       if(m) path = decodeURIComponent(m[1])
                     }
 
-                    let secret = sessionStorage.getItem('admin_secret')
-                    if(!secret){
-                      setShowSecret(true)
+                    // get current session token and send as Bearer token
+                    const { data: sessionData } = await supabase.auth.getSession()
+                    const token = sessionData?.session?.access_token
+                    if(!token){
+                      toast.push('Sign in as an admin to delete videos', { type: 'error' })
                       setIsDeleting(false)
                       return
                     }
 
                     const res = await fetch((window.__ADMIN_SERVER_URL||'http://localhost:5000') + '/delete-video', {
-                      method: 'POST', headers: { 'content-type': 'application/json', 'x-admin-secret': secret },
+                      method: 'POST', headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + token },
                       body: JSON.stringify({ id, storage_path: path })
                     })
                     const json = await res.json()
@@ -95,7 +95,7 @@ export default function Card({id,title,thumb,views}){
                 }}
               />
             )}
-            {showSecret && <SecretModal onClose={()=>{ setShowSecret(false); /* after saving secret retry delete by opening confirm again */ setShowConfirm(true) }} />}
+            
           </>
         )}
         <button

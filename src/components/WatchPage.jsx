@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
- import { useToast } from '../lib/toast.jsx'
+import { useToast } from '../lib/toast.jsx'
 import ConfirmModal from './ConfirmModal'
-import SecretModal from './SecretModal'
 
 function fmtDate(iso){
   try{
@@ -46,7 +45,7 @@ export default function WatchPage(){
 
   const toast = useToast()
   const [showConfirm, setShowConfirm] = useState(false)
-  const [showSecret, setShowSecret] = useState(false)
+  
   async function post(){
     if(!user){ toast.push('Please sign in to post comments', { type: 'error' }); return }
     if(!text.trim()) return
@@ -82,17 +81,16 @@ export default function WatchPage(){
         const m = video.url.match(/\/public\/videos\/(.+)$/)
         if(m) path = decodeURIComponent(m[1])
       }
-
-      let secret = sessionStorage.getItem('admin_secret')
-      if(!secret){
-        // show secret modal to collect admin secret
-        setShowSecret(true)
-        // wait for user to fill secret modal; it stores to sessionStorage
+      // get current session access token and send as Bearer token to admin server
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+      if(!token){
+        toast.push('Sign in as an admin to delete videos', { type: 'error' })
         return
       }
 
       const res = await fetch((window.__ADMIN_SERVER_URL||'http://localhost:5000') + '/delete-video', {
-        method: 'POST', headers: { 'content-type': 'application/json', 'x-admin-secret': secret },
+        method: 'POST', headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + token },
         body: JSON.stringify({ id, storage_path: path })
       })
       const json = await res.json()
@@ -100,13 +98,6 @@ export default function WatchPage(){
       toast.push('Deleted', { type: 'info' })
       window.location.href = '/'
     }catch(err){ console.error('delete', err); alert('Delete failed: '+(err.message||err)) }
-  }
-
-  // called after SecretModal saves to sessionStorage
-  async function afterSecretSaved(){
-    setShowSecret(false)
-    // retry delete flow
-    await doDelete()
   }
 
   return (

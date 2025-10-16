@@ -8,9 +8,11 @@ export default function AdminDeletions(){
   useEffect(()=>{
     async function load(){
       try{
-        const secret = sessionStorage.getItem('admin_secret')
-        if(!secret){ toast.push('Admin secret missing. Set admin_secret in sessionStorage to view deletions', { type: 'error' }); return }
-        const res = await fetch((window.__ADMIN_SERVER_URL||'http://localhost:5000') + '/deletions', { headers: { 'x-admin-secret': secret }})
+        // use current session access token to authenticate
+        const { data: sessionData } = await (await import('../lib/supabaseClient')).supabase.auth.getSession()
+        const token = sessionData?.session?.access_token
+        if(!token){ toast.push('Sign in as an admin to view deletions', { type: 'error' }); return }
+        const res = await fetch((window.__ADMIN_SERVER_URL||'http://localhost:5000') + '/deletions', { headers: { 'authorization': 'Bearer ' + token }})
         if(!res.ok){ const j = await res.json(); throw new Error(j?.error||res.statusText) }
         const j = await res.json()
         setRows(j.data||[])
