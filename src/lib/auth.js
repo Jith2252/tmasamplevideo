@@ -7,22 +7,7 @@ export async function getUser(){
 
 export async function checkIsAdmin(){
   // Try server-side verification first (requires Authorization Bearer token)
-  try{
-    const sessionR = await supabase.auth.getSession()
-    const token = sessionR.data?.session?.access_token
-    if(token){
-      try{
-        const res = await fetch((window.__ADMIN_SERVER_URL||'/') + 'is-admin', {
-          headers: { Authorization: 'Bearer ' + token }
-        })
-        if(res.ok){
-          const json = await res.json()
-          return !!json?.admin
-        }
-      }catch(e){ /* server check failed, fall back */ }
-    }
-  }catch(e){ /* ignore getSession errors and fall back */ }
-
+  
   // Fallback: check client-side VITE_ADMIN_EMAILS list against signed-in user
   const sessionR = await supabase.auth.getSession()
   const user = sessionR.data?.session?.user || (await getUser())
