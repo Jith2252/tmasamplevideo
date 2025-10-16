@@ -7,11 +7,6 @@ const { createClient } = require('@supabase/supabase-js')
 const app = express()
 app.use(cors())
 app.use(express.json())
-// Log incoming requests for diagnostics
-app.use((req, res, next) => {
-  try{ console.log(`[req] ${req.method} ${req.url} from ${req.ip}`) }catch(e){}
-  next()
-})
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE
@@ -147,12 +142,11 @@ app.get('/is-admin', ensureAdmin, (req, res) => {
   }catch(e){ console.error('/is-admin err', e); return res.status(500).json({ error: 'server_error' }) }
 })
 
-app.listen(PORT, HOST, ()=> console.log(`Admin server running on ${HOST}:${PORT} (pid ${process.pid})`))
+app.listen(PORT, HOST, ()=> {})
 
 // Serve frontend production build if present
 const distPath = path.join(__dirname, '..', 'dist')
 if (require('fs').existsSync(distPath)) {
-  console.log('Serving static files from', distPath)
   app.use(express.static(distPath))
   app.get('*', (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'))
